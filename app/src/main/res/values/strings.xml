@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Aircraft</string>
+    <string name="title_activity_main">MainActivity</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="next">Next</string>
+    <string name="previous">Previous</string>
+    <string name="main">CheckBox</string>
+    <string name="soundText">音量开关</string>
+    <string name="gameHardText">困难模式</string>
+    <string name="gameEasyText">简单模式</string>
+    <string name="gameNormalText">普通模式</string>
+    <string name="deleteButtonText">删除</string>
+</resources>
