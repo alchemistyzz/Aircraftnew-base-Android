@@ -12,10 +12,9 @@ public class BulletThread extends Thread {
     @Override
     public void run() {
         try {
-            Thread.sleep(10000);
-            if (Thread.currentThread().isInterrupted()) {
-                heroAircraft.setShootNum(1);
-            }
+            Thread.sleep(5000);
+            heroAircraft.setShootNum(1);
+
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

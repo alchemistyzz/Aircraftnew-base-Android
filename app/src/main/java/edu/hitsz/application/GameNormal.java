@@ -5,7 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.view.Surface;
 
-public class GameNormal extends Game{
+public class GameNormal extends Game {
 
 
     public GameNormal(Context context) {
@@ -14,6 +14,8 @@ public class GameNormal extends Game{
 
     @Override
     public void setDifficulty() {
+        super.setHeroHp(10000);
+        super.setMaxHp(10000);
 
         super.setBossHp(200);
         super.setBossSpeedX(5);

@@ -10,11 +10,10 @@ import android.widget.TextView;
 
 import java.util.List;
 
-import edu.hitsz.LaunchActivity;
 import edu.hitsz.R;
 
 public class RankListAdapter extends BaseAdapter {
-    private List<RankList> rankLists;
+    private final List<RankList> rankLists;
     Context context;
 
     public RankListAdapter(List<RankList> rankLists, Context context) {
@@ -39,7 +38,7 @@ public class RankListAdapter extends BaseAdapter {
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        convertView = LayoutInflater.from(context).inflate(R.layout.list_item, parent, false);
+        convertView = LayoutInflater.from(context).inflate(R.layout.ranklist_item, parent, false);
 
         RankList rankList = rankLists.get(position);
         @SuppressLint("ResourceType")
@@ -47,8 +46,8 @@ public class RankListAdapter extends BaseAdapter {
         TextView list_rank = convertView.findViewById(R.id.list_rank);
         TextView list_time = convertView.findViewById(R.id.list_time);
         TextView list_score = convertView.findViewById(R.id.list_score);
-        list_name.setText(rankList.getUserName());
-        list_score.setText(rankList.getScore());
+        list_name.setText(rankList.getUser_name());
+        list_score.setText(rankList.getScore()+"");
         list_rank.setText(position+1 + "");
         list_time.setText(rankList.getTime());
 

@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import edu.hitsz.GameActivity;
 import edu.hitsz.LaunchActivity;
 import edu.hitsz.R;
 
@@ -29,14 +30,14 @@ public class MusicThread {
     private boolean BGM_ON = false;
     private boolean BGM_BOSS_ON = false;
     private Context context;
-    private static SoundPool soundPool = new SoundPool(16, AudioManager.STREAM_MUSIC, 0);
+    private static SoundPool soundPool = new SoundPool(64, AudioManager.STREAM_MUSIC, 0);
     private static MediaPlayer mediaBgm;
     private static MediaPlayer mediaBgmBoss;
     private static HashMap<Integer, Integer> hashMap = new HashMap<>();
 
     public MusicThread(Context context) {
         this.context = context;
-        isOn= LaunchActivity.MUSIC_ON;
+        isOn= GameActivity.MUSIC_ON;
 
         hashMap.put(SOUND_BGM, soundPool.load(context, R.raw.bgm, 1));
         hashMap.put(SOUND_BGM_BOSS, soundPool.load(context, R.raw.bgm_boss, 1));

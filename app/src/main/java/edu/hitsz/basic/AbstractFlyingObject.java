@@ -2,6 +2,7 @@ package edu.hitsz.basic;
 
 import android.graphics.Bitmap;
 
+import edu.hitsz.GameActivity;
 import edu.hitsz.LaunchActivity;
 import edu.hitsz.aircraft.AbstractAircraft;
 import edu.hitsz.application.ImageManager;
@@ -79,7 +80,7 @@ public abstract class AbstractFlyingObject {
     public void forward() {
         locationX += speedX;
         locationY += speedY;
-        if (locationX <= 0 || locationX >= LaunchActivity.WINDOW_WIDTH) {
+        if (locationX <= 0 || locationX >= GameActivity.WINDOW_WIDTH) {
             // 横向超出边界后反向
             speedX = -speedX;
         }
@@ -168,5 +169,16 @@ public abstract class AbstractFlyingObject {
         isValid = false;
     }
 
+    public int getSpeedX() {
+        return speedX;
+    }
+
+    public void setSpeedX(int speedX) {
+        this.speedX = speedX;
+    }
+
+    public void setSpeedY(int speedY) {
+        this.speedY = speedY;
+    }
 }
 

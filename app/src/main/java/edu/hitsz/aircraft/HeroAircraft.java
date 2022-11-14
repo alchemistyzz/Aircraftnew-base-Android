@@ -30,6 +30,10 @@ public class HeroAircraft extends AbstractAircraft {
      */
     private int direction = -1;
 
+
+    private boolean superState = false;
+
+
     /**
      * @param locationX 英雄机位置x坐标
      * @param locationY 英雄机位置y坐标
@@ -90,6 +94,25 @@ public class HeroAircraft extends AbstractAircraft {
     public int getShootNum() {
         return shootNum;
     }
+
+
+    public void refresh(int locationX, int locationY, int speedX, int speedY, int hp){
+        this.locationX=locationX;
+        this.locationY=locationY;
+        this.speedX=speedX;
+        this.speedY=speedY;
+        this.hp=hp;
+        this.isValid=true;
+        this.shootNum=1;
+    }
+    public boolean getSuperState() {
+        return superState;
+    }
+
+    public void setSuperState(boolean superState) {
+        this.superState = superState;
+    }
+
 
     @Override
     public void die() {

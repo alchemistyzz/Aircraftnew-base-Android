@@ -1,27 +1,43 @@
+//mysql_account:aircraft
+//mysql_password:123Abc!333ka@
 package edu.hitsz;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.StrictMode;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
+
+import org.jetbrains.annotations.Contract;
+
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Time;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.LinkedList;
 import java.util.List;
 
 import edu.hitsz.aircraft.BossEnemy;
@@ -36,10 +52,11 @@ import edu.hitsz.application.GameNormal;
 import edu.hitsz.application.ImageManager;
 import edu.hitsz.bullet.EnemyBullet;
 import edu.hitsz.bullet.HeroBullet;
+import edu.hitsz.data.Database;
 import edu.hitsz.data.RankList;
 import edu.hitsz.data.RankListAdapter;
-import edu.hitsz.data.RankListDaoImpl;
-import edu.hitsz.internet.Server;
+import edu.hitsz.data.User;
+import edu.hitsz.internet.Client;
 import edu.hitsz.prop.BloodProp;
 import edu.hitsz.prop.BombProp;
 import edu.hitsz.prop.BulletProp;
@@ -47,26 +64,22 @@ import edu.hitsz.prop.BulletProp;
 public class LaunchActivity extends Activity implements View.OnClickListener {
     private static final String TAG = "LaunchActivity";
 
-    public static int WINDOW_HEIGHT;
-    public static int WINDOW_WIDTH;
-
-    public static int GAME_OVER = 1;
-    public static int NAME_INPUT = 2;
-    public static int GAME_MODE;
-    public static boolean MUSIC_ON = false;
-
     public static Handler handler;
 
     private Button gameEasyBtn;
     private Button gameNormalBtn;
     private Button gameHardBtn;
-
-    private ListView listView;
+    private Button combatBtn;
+    private ImageButton shoppingBtn;
+    private Button changeIDBtn;
 
     private Game game;
-    private RankListDaoImpl rankListDao;
-    private List<RankList> rankLists;
-    private Server server;
+    private User user;
+    private Intent intent;
+    private Database database;
+    private SimpleDateFormat simpleDateFormat;
+
+    public static int USER_ID;
 
 
     @Override
@@ -74,20 +87,8 @@ public class LaunchActivity extends Activity implements View.OnClickListener {
 //        XUI.initTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_launch);
-
-//        new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//
-//                se.sendMessage();
-//            }
-//        }).start();
-
-
         initVar();
         loadingImg();
-
-
     }
 
 
@@ -101,9 +102,8 @@ public class LaunchActivity extends Activity implements View.OnClickListener {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (event.getAction() == MotionEvent.ACTION_MOVE) {
-            //当手指按下的时候
-            game.heroAircraft.setLocation(event.getX(), event.getY());
+        if (event.getAction() == MotionEvent.BUTTON_BACK) {
+            return true;
         }
         return super.onTouchEvent(event);
     }
@@ -113,7 +113,7 @@ public class LaunchActivity extends Activity implements View.OnClickListener {
 
     }
 
-    public void loadingImg() {
+    private void loadingImg() {
 
         ImageManager.MISSILE_IMAGE = BitmapFactory.decodeResource(getResources(), R.drawable.missile_enemy);
         ImageManager.HERO_IMAGE = BitmapFactory.decodeResource(getResources(), R.drawable.hero);
@@ -138,135 +138,151 @@ public class LaunchActivity extends Activity implements View.OnClickListener {
         ImageManager.CLASSNAME_IMAGE_MAP.put(MissileEnemy.class.getName(), ImageManager.MISSILE_IMAGE);
     }
 
-    @SuppressLint("HandlerLeak")
-    public void initVar() {
-        handler = new Handler() {
-            @SuppressLint("SetTextI18n")
-            @Override
-            public void handleMessage(Message msg) {
-                super.handleMessage(msg);
-                if (msg.what == GAME_OVER) {
-                    AlertDialog.Builder builder = new AlertDialog.Builder(LaunchActivity.this);
-                    builder.setTitle("请输入姓名");
-                    EditText nameView = new EditText(LaunchActivity.this);
-                    nameView.setText("testUser");
-                    int score = msg.arg1;
-                    builder.setView(nameView);
-                    builder.setPositiveButton("确认", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            String name = nameView.getText().toString();
-                            setContentView(R.layout.ranklist);
-                            TextView text = findViewById(R.id.difficultTextView);
-                            listView = findViewById(R.id.rankListView);
-                            if (GAME_MODE == 1) {
-                                text.setText(R.string.gameEasyText);
-                            } else if (GAME_MODE == 2) {
-                                text.setText(R.string.gameNormalText);
-                            } else {
-                                text.setText(R.string.gameHardText);
-                            }
+    @SuppressLint({"HandlerLeak", "WrongViewCast"})
+    private void initVar() {
+        if (android.os.Build.VERSION.SDK_INT > 9) {
+            StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+            StrictMode.setThreadPolicy(policy);
+        }
 
-                            rankListDao = new RankListDaoImpl();
-                            Date day = new Date();
-                            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-                            RankList tem = new RankList(score + "", name, sdf.format(day) + "", LaunchActivity.GAME_MODE + "");
-                            rankListDao.doAdd(tem);
-                            rankListDao.writeAll();
-                            rankLists = rankListDao.queryAll();
-                            RankListAdapter rankListAdapter = new RankListAdapter(rankLists, LaunchActivity.this);
-                            listView.setAdapter(rankListAdapter);
-                            listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-                                @Override
-                                public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-                                    rankListDao.deleteList(rankLists.get(position));
-                                    rankListDao.writeAll();
-                                    rankListDao = new RankListDaoImpl();
-                                    rankLists = rankListDao.queryAll();
-                                    RankListAdapter rankListAdapter = new RankListAdapter(rankLists, LaunchActivity.this);
-                                    listView.setAdapter(rankListAdapter);
-                                    return false;
-                                }
-                            });
-                        }
-                    });
-                    builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            setContentView(R.layout.ranklist);
-                            TextView text = findViewById(R.id.difficultTextView);
-                            if (GAME_MODE == 1) {
-                                text.setText(R.string.gameEasyText);
-                            } else if (GAME_MODE == 2) {
-                                text.setText(R.string.gameNormalText);
-                            } else {
-                                text.setText(R.string.gameHardText);
-                            }
-
-                            rankListDao = new RankListDaoImpl();
-                            rankLists = rankListDao.queryAll();
-                            RankListAdapter rankListAdapter = new RankListAdapter(rankLists, LaunchActivity.this);
-                            listView.setAdapter(rankListAdapter);
-
-                        }
-                    });
-                    builder.show();
-
-                }
-
-            }
-
-        };
-
+        database = Database.getInstance();
+        simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        checkUser();
+        user=database.getUserById(USER_ID);
 
         gameEasyBtn = findViewById(R.id.GameEasy);
         gameHardBtn = findViewById(R.id.GameHard);
         gameNormalBtn = findViewById(R.id.GameNormal);
-        listView = findViewById(R.id.rankListView);
+        shoppingBtn = findViewById(R.id.shopping);
+        combatBtn = findViewById(R.id.GameCombat);
+        changeIDBtn=findViewById(R.id.changeID);
 
         gameEasyBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                GAME_MODE = 1;
                 CheckBox checkBox = findViewById(R.id.SoundCheckBox);
-                MUSIC_ON = checkBox.isChecked();
-                ImageManager.BACKGROUND_IMAGE = BitmapFactory.decodeResource(getResources(), R.drawable.bg);
-                game = new GameEasy(LaunchActivity.this);
-                game.setDifficulty();
-                game.action();
-                setContentView(game);
+                GameActivity.MUSIC_ON = checkBox.isChecked();
+                intent = new Intent();
+                intent.setClass(LaunchActivity.this, GameActivity.class);
+                intent.putExtra("mode", "easy");
+                startActivity(intent);
             }
         });
         gameNormalBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                GAME_MODE = 2;
                 CheckBox checkBox = findViewById(R.id.SoundCheckBox);
-                MUSIC_ON = checkBox.isChecked();
-                ImageManager.BACKGROUND_IMAGE = BitmapFactory.decodeResource(getResources(), R.drawable.bg2);
-                game = new GameNormal(LaunchActivity.this);
-                game.setDifficulty();
-                game.action();
-                setContentView(game);
+                GameActivity.MUSIC_ON = checkBox.isChecked();
+                intent = new Intent();
+                intent.setClass(LaunchActivity.this, GameActivity.class);
+                intent.putExtra("mode", "normal");
+                startActivity(intent);
             }
         });
         gameHardBtn.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                GAME_MODE = 3;
                 CheckBox checkBox = findViewById(R.id.SoundCheckBox);
-                MUSIC_ON = checkBox.isChecked();
-                ImageManager.BACKGROUND_IMAGE = BitmapFactory.decodeResource(getResources(), R.drawable.bg3);
-                game = new GameHard(LaunchActivity.this);
-                game.setDifficulty();
-                game.action();
-                setContentView(game);
+                GameActivity.MUSIC_ON = checkBox.isChecked();
+                intent = new Intent();
+                intent.setClass(LaunchActivity.this, GameActivity.class);
+                intent.putExtra("mode", "hard");
+                startActivity(intent);
+            }
+        });
+        shoppingBtn.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                CheckBox checkBox = findViewById(R.id.SoundCheckBox);
+                GameActivity.MUSIC_ON = checkBox.isChecked();
+                intent = new Intent();
+                intent.setClass(LaunchActivity.this, ShoppingActivity.class);
+                startActivity(intent);
+            }
+
+
+        });
+        combatBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (CombatActivity.COMBAT_STATUS) {
+                    AlertDialog.Builder builder = new AlertDialog.Builder(LaunchActivity.this);
+                    AlertDialog alertDialog = builder.create();
+                    alertDialog.show();
+                } else {
+                    intent = new Intent();
+                    intent.setClass(LaunchActivity.this, CombatActivity.class);
+                    startActivity(intent);
+                }
             }
         });
 
-        DisplayMetrics dm = getResources().getDisplayMetrics();
-        WINDOW_HEIGHT = dm.heightPixels;
-        WINDOW_WIDTH = dm.widthPixels;
+        changeIDBtn.setOnClickListener(new View.OnClickListener()
+        {
+            @Override
+            public void onClick(View v)
+            {
+                android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(LaunchActivity.this);
+                builder.setIcon(R.drawable.ic_launcher_background);
+                builder.setTitle("请输入新的用户名");
+                String oldUserName = user.getName();
+                //    通过LayoutInflater来加载一个xml的布局文件作为一个View对象
+                View view = LayoutInflater.from(LaunchActivity.this).inflate(R.layout.change_id_dialog, null);
+                //    设置我们自己定义的布局文件作为弹出框的Content
+                builder.setView(view);
+                TextView old_user_name = view.findViewById(R.id.oldUsername);
+                EditText new_user_username = view.findViewById(R.id.newUsername);
+                old_user_name.setText("旧用户名:"+oldUserName);
 
-        server = new Server("106.52.3.181");
-        server.sendMessage("connect!!!");
+                builder.setPositiveButton("确定", new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which)
+                    {
+                        String newUserName = new_user_username.getText().toString().trim();
+                        user.setName(newUserName);
+                        database.updateUser(user);
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                List<RankList> rankLists = new LinkedList<>();
+                                rankLists.addAll(database.getAllRankListByUser(1,user.getId()));
+                                rankLists.addAll(database.getAllRankListByUser(2,user.getId()));
+                                rankLists.addAll(database.getAllRankListByUser(3,user.getId()));
+                                for(int i=0;i<rankLists.size();i++){
+                                    RankList rankList=rankLists.get(i);
+                                    rankList.setUser_name(user.getName());
+                                    database.updateRanklist(rankList);
+                                }
+                            }
+                        }).start();
+
+                        //    将输入的新用户名打印出来
+                        Toast.makeText(LaunchActivity.this, "新用户名: " + newUserName , Toast.LENGTH_SHORT).show();
+                    }
+                });
+                builder.setNegativeButton("取消", new DialogInterface.OnClickListener()
+                {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which)
+                    {
+
+                    }
+                });
+                builder.show();
+            }
+        });
+
+
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        GameActivity.WINDOW_HEIGHT = dm.heightPixels;
+        GameActivity.WINDOW_WIDTH = dm.widthPixels;
+
+
+    }
+
+
+    private void checkUser() {
+        if (!database.userExistByAccount(LoginActivity.OPEN_ID)) {
+            database.addUser(new User("用户" + LoginActivity.OPEN_ID.substring(0, 12), LoginActivity.OPEN_ID, "12345678", simpleDateFormat.format(new Date()), 0, "", 5, 5, 5));
+        }
+        USER_ID = database.getUserByAccount(LoginActivity.OPEN_ID).getId();
     }
 
 

@@ -17,6 +17,9 @@ public class GameEasy extends Game{
     @Override
     public void setDifficulty() {
 
+        super.setHeroHp(10000);
+        super.setMaxHp(10000);
+
         super.setBossHp(100);
         super.setBossSpeedX(5);
         super.setBossSPeedY(0);

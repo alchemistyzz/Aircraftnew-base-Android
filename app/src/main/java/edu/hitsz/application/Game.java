@@ -7,25 +7,17 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
-import android.media.MediaPlayer;
 import android.os.Message;
-import android.util.DisplayMetrics;
-import android.view.MotionEvent;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
 import android.view.View;
+import android.widget.Button;
 
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
+import edu.hitsz.GameActivity;
 import edu.hitsz.LaunchActivity;
 import edu.hitsz.R;
 import edu.hitsz.aircraft.AbstractAircraft;
@@ -36,21 +28,21 @@ import edu.hitsz.aircraft.MissileEnemy;
 import edu.hitsz.aircraft.MobEnemyFactory;
 import edu.hitsz.basic.AbstractFlyingObject;
 import edu.hitsz.bullet.AbstractBullet;
-import edu.hitsz.data.RankList;
-import edu.hitsz.data.RankListDao;
-import edu.hitsz.data.RankListDaoImpl;
 import edu.hitsz.prop.AbstractProp;
 import edu.hitsz.prop.BloodPropFactory;
 import edu.hitsz.prop.BombProp;
 import edu.hitsz.prop.BombPropFactory;
 import edu.hitsz.prop.BulletPropFactory;
+import edu.hitsz.prop.FrozeProp;
 import edu.hitsz.strategy.BossStrategy;
 import edu.hitsz.strategy.ContextShoot;
 import edu.hitsz.strategy.EliteStrategy;
 import edu.hitsz.strategy.HeroStrategyNormal;
 import edu.hitsz.strategy.HeroStrategySuper;
 import edu.hitsz.thread.BulletThread;
+import edu.hitsz.thread.FrozeThread;
 import edu.hitsz.thread.MusicThread;
+import edu.hitsz.thread.SuperThread;
 
 /**
  * 游戏主面板，游戏启动
@@ -103,10 +95,14 @@ public abstract class Game extends View {
     private Timer timer;
     private MusicThread musicThread;
     private BulletThread bulletThread;
+    private FrozeThread frozeThread;
+    private SuperThread superThread;
 
     /**
      * 难度有关参数
      */
+    private int heroHp;
+    private int maxHp;
     private int enemyMaxNumber;
     private int bossTarget;
     private int bossSpeedX;
@@ -130,9 +126,9 @@ public abstract class Game extends View {
         this.context = context;
         this.activity = (Activity) context;
         heroAircraft = HeroAircraft.getInstance(
-                LaunchActivity.WINDOW_WIDTH / 2,
-                LaunchActivity.WINDOW_HEIGHT - ImageManager.HERO_IMAGE.getHeight(),
-                0, 0, 10000);
+                GameActivity.WINDOW_WIDTH / 2,
+                GameActivity.WINDOW_HEIGHT - ImageManager.HERO_IMAGE.getHeight(),
+                0, 0, heroHp);
 
         eliteEnemyFactory = new EliteEnemyFactory();
         mobEnemyFactory = new MobEnemyFactory();
@@ -161,7 +157,9 @@ public abstract class Game extends View {
      * 游戏启动入口，执行游戏逻辑
      */
     public void action() {
-
+        heroAircraft.refresh(GameActivity.WINDOW_WIDTH / 2,
+                GameActivity.WINDOW_HEIGHT - ImageManager.HERO_IMAGE.getHeight(),
+                0, 0, maxHp);
 
         // 定时任务：绘制、对象产生、碰撞判定、击毁及结束判定
         Runnable task = () -> {
@@ -176,7 +174,7 @@ public abstract class Game extends View {
                         musicThread.start(MusicThread.SOUND_BGM_BOSS);
                         musicThread.stop(MusicThread.SOUND_BGM);
                         bossExists = 1;
-                        enemyAircrafts.add(bossEnemyFactory.createEnemy(LaunchActivity.WINDOW_WIDTH / 2,
+                        enemyAircrafts.add(bossEnemyFactory.createEnemy(GameActivity.WINDOW_WIDTH / 2,
                                 50,
                                 bossSpeedX + (int) (timeRate * time * Math.pow(10, -6)),
                                 bossSPeedY,
@@ -187,16 +185,16 @@ public abstract class Game extends View {
                 if (enemyAircrafts.size() < enemyMaxNumber) {
                     if ((int) (Math.random() * 1000) % (generateRate + 1) != 0) {
                         enemyAircrafts.add(mobEnemyFactory.createEnemy(
-                                (int) (Math.random() * (LaunchActivity.WINDOW_WIDTH - ImageManager.MOB_ENEMY_IMAGE.getWidth())) * 1,
-                                (int) (Math.random() * LaunchActivity.WINDOW_HEIGHT * 0.2) * 1,
+                                (int) (Math.random() * (GameActivity.WINDOW_WIDTH - ImageManager.MOB_ENEMY_IMAGE.getWidth())) * 1,
+                                (int) (Math.random() * GameActivity.WINDOW_HEIGHT * 0.2) * 1,
                                 (mobSpeedX + (int) (timeRate * time * Math.pow(10, -6))) * (Math.random() > 0.5 ? 1 : -1),
                                 mobSpeedY + (int) (timeRate * time * Math.pow(10, -6)),
                                 mobHp + (int) (timeRate * time * Math.pow(10, -5))
                         ));
                     } else {
                         enemyAircrafts.add(eliteEnemyFactory.createEnemy(
-                                (int) (Math.random() * (LaunchActivity.WINDOW_WIDTH - ImageManager.ELITE_ENEMY_IMAGE.getWidth())) * 1,
-                                (int) (Math.random() * LaunchActivity.WINDOW_HEIGHT * 0.2) * 1,
+                                (int) (Math.random() * (GameActivity.WINDOW_WIDTH - ImageManager.ELITE_ENEMY_IMAGE.getWidth())) * 1,
+                                (int) (Math.random() * GameActivity.WINDOW_HEIGHT * 0.2) * 1,
                                 (eliteSpeedX + (int) (timeRate * time * Math.pow(10, -6))) * (Math.random() > 0.5 ? 1 : -1),
                                 eliteSpeedY + (int) (timeRate * time * Math.pow(10, -6)),
                                 eliteHp + (int) (timeRate * time * Math.pow(10, -5))
@@ -205,7 +203,7 @@ public abstract class Game extends View {
                 }
                 if ((int) (Math.random() * 1000) % (missileRate + 1) == 0) {
                     enemyAircrafts.add(new MissileEnemy(
-                            (int) (Math.random() * (LaunchActivity.WINDOW_WIDTH - ImageManager.MOB_ENEMY_IMAGE.getWidth())) * 1,
+                            (int) (Math.random() * (GameActivity.WINDOW_WIDTH - ImageManager.MOB_ENEMY_IMAGE.getWidth())) * 1,
                             0,
                             0,
                             missileSpeedY + (int) (timeRate * time * Math.pow(10, -6)),
@@ -239,9 +237,9 @@ public abstract class Game extends View {
                 musicThread.start(MusicThread.SOUND_GAME_OVER);
                 // 游戏结束
                 Message message = new Message();
-                message.what = LaunchActivity.GAME_OVER;
-                message.arg1=score;
-                LaunchActivity.handler.sendMessage(message);
+                message.what = GameActivity.GAME_OVER;
+                message.arg1 = score;
+                GameActivity.handler.sendMessage(message);
 
                 timer.cancel();
                 gameOverFlag = true;
@@ -354,12 +352,12 @@ public abstract class Game extends View {
                 if (enemyAircraft.crash(bullet)) {
                     // 敌机撞击到英雄机子弹
                     // 敌机损失一定生命值
-                    musicThread.start(MusicThread.SOUND_BULLET_HIT);
+//                    musicThread.start(MusicThread.SOUND_BULLET_HIT);
 
                     enemyAircraft.decreaseHp(bullet.getPower());
                     bullet.vanish();
                     if (enemyAircraft.notValid()) {
-                        if (enemyAircraft.getClass().getName() .equals("edu.hitsz.aircraft.BossEnemy")) {
+                        if (enemyAircraft.getClass().getName().equals("edu.hitsz.aircraft.BossEnemy")) {
                             bossScore = 0;
                             bossExists = 0;
                             musicThread.stop(MusicThread.SOUND_BGM_BOSS);
@@ -367,7 +365,7 @@ public abstract class Game extends View {
                         }
 
                         // TODO 获得分数，产生道具补给
-                        else if (enemyAircraft.getClass().getName() .equals( "edu.hitsz.aircraft.EliteEnemy")) {
+                        else if (enemyAircraft.getClass().getName().equals("edu.hitsz.aircraft.EliteEnemy")) {
                             int random = (int) (Math.random() * 100);
                             if (random % 4 == 0)
                                 props.add(bloodPropFactory.createProp(
@@ -403,8 +401,15 @@ public abstract class Game extends View {
                 }
                 // 英雄机 与 敌机 相撞，均损毁
                 if (enemyAircraft.crash(heroAircraft) || heroAircraft.crash(enemyAircraft)) {
-                    enemyAircraft.vanish();
-                    heroAircraft.decreaseHp(Integer.MAX_VALUE);
+                    if(heroAircraft.getSuperState()==false){
+                        enemyAircraft.vanish();
+                        heroAircraft.decreaseHp(Integer.MAX_VALUE);
+                    }
+                    else {
+                        enemyAircraft.vanish();
+                        score+=10;
+                    }
+
                 }
             }
         }
@@ -415,7 +420,7 @@ public abstract class Game extends View {
                 continue;
             if (heroAircraft.crash(prop)) {
 
-                if (prop.getClass().getName() .equals( "edu.hitsz.prop.BulletProp")) {
+                if (prop.getClass().getName().equals("edu.hitsz.prop.BulletProp")) {
                     if (bulletThread != null) {
                         bulletThread.interrupt();
                     }
@@ -423,10 +428,10 @@ public abstract class Game extends View {
                     bulletThread.start();
                     musicThread.start(MusicThread.SOUND_GET_SUPPLY);
                     heroAircraft.setShootNum(heroAircraft.getShootNum() + 2);
-                } else if (prop.getClass().getName() .equals( "edu.hitsz.prop.BloodProp")) {
+                } else if (prop.getClass().getName().equals("edu.hitsz.prop.BloodProp")) {
                     musicThread.start(MusicThread.SOUND_GET_SUPPLY);
                     heroAircraft.decreaseHp(prop.getPower());
-                } else if (prop.getClass().getName() .equals( "edu.hitsz.prop.BombProp")) {
+                } else if (prop.getClass().getName().equals("edu.hitsz.prop.BombProp")) {
                     musicThread.start(MusicThread.SOUND_BOMB_EXPLOSION);
                     for (AbstractAircraft abstractAircraft : enemyAircrafts) {
                         score += 10;
@@ -474,10 +479,10 @@ public abstract class Game extends View {
     public void onDraw(Canvas canvas) {
         // 绘制背景,图片滚动
         super.onDraw(canvas);
-        canvas.drawBitmap(ImageManager.BACKGROUND_IMAGE, 0, this.backGroundTop - LaunchActivity.WINDOW_HEIGHT, null);
+        canvas.drawBitmap(ImageManager.BACKGROUND_IMAGE, 0, this.backGroundTop - GameActivity.WINDOW_HEIGHT, null);
         canvas.drawBitmap(ImageManager.BACKGROUND_IMAGE, 0, this.backGroundTop, null);
         this.backGroundTop += 1;
-        if (this.backGroundTop == LaunchActivity.WINDOW_HEIGHT) {
+        if (this.backGroundTop == GameActivity.WINDOW_HEIGHT) {
             this.backGroundTop = 0;
         }
 
@@ -493,7 +498,6 @@ public abstract class Game extends View {
 
         //绘制得分和生命值
         paintScoreAndLife(canvas);
-
     }
 
     private void paintImageWithPositionRevised(Canvas g, List<? extends AbstractFlyingObject> objects) {
@@ -510,17 +514,17 @@ public abstract class Game extends View {
     }
 
     private void paintScoreAndLife(Canvas g) {
-        int x = LaunchActivity.WINDOW_WIDTH/16;
-        int y = LaunchActivity.WINDOW_HEIGHT/16;
+        int x = GameActivity.WINDOW_WIDTH / 16;
+        int y = GameActivity.WINDOW_HEIGHT / 16;
 
         Paint pen = new Paint();
         pen.setColor(Color.RED);
         pen.setTypeface(Typeface.SANS_SERIF);
-        pen.setTextSize(LaunchActivity.WINDOW_WIDTH/16);
+        pen.setTextSize(GameActivity.WINDOW_WIDTH / 16);
 
         g.drawText("SCORE:" + this.score, x, y, pen);
-        g.drawText("BOSS_SCORE:" + this.bossScore, x, y+LaunchActivity.WINDOW_HEIGHT/32, pen);
-        g.drawText("LIFE:" + this.heroAircraft.getHp(), x, y+LaunchActivity.WINDOW_HEIGHT/16, pen);
+        g.drawText("BOSS_SCORE:" + this.bossScore, x, y + GameActivity.WINDOW_HEIGHT / 32, pen);
+        g.drawText("LIFE:" + this.heroAircraft.getHp(), x, y + GameActivity.WINDOW_HEIGHT / 16, pen);
 
 
     }
@@ -593,4 +597,67 @@ public abstract class Game extends View {
         this.timeRate = timeRate;
     }
 
+    public int getHeroHp() {
+        return heroHp;
+    }
+
+    public void setHeroHp(int heroHp) {
+        this.heroHp = heroHp;
+    }
+
+    public int getMaxHp() {
+        return maxHp;
+    }
+
+    public void setMaxHp(int maxHp) {
+        this.maxHp = maxHp;
+    }
+
+    public void actionSuper(){
+        superThread = new SuperThread(heroAircraft);
+        superThread.start();
+        heroAircraft.setSuperState(true);
+    }
+
+    public void actionFroze(){
+        FrozeProp frozeProp = new FrozeProp(1,1,1,1,1);
+        frozeThread= new FrozeThread(heroAircraft,frozeProp);
+        frozeThread.start();
+        for (AbstractAircraft abstractAircraft : enemyAircrafts) {
+            ( frozeProp).addEnemy(abstractAircraft);
+        }
+        for (AbstractBullet abstractBullet : enemyBullets) {
+            (frozeProp).addBullet(abstractBullet);
+        }
+        frozeProp.Froze();
+        frozeProp.vanish();
+
+
+
+    }
+
+    public void actionBomb(){
+        AbstractProp bombProp = new BombProp(1,1,1,1,1);
+        musicThread.start(MusicThread.SOUND_BOMB_EXPLOSION);
+        for (AbstractAircraft abstractAircraft : enemyAircrafts) {
+            score += 10;
+            bossScore += 10;
+            ((BombProp) bombProp).addEnemy(abstractAircraft);
+        }
+        for (AbstractBullet abstractBullet : enemyBullets) {
+            ((BombProp) bombProp).addBullet(abstractBullet);
+        }
+        ((BombProp) bombProp).bomb();
+        bombProp.vanish();
+
+
+    }
+
+    public int getScore() {
+        return score;
+    }
+
+    public boolean isGameOverFlag() {
+        return gameOverFlag;
+    }
 }

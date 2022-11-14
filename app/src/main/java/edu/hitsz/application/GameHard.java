@@ -14,6 +14,8 @@ public class GameHard extends Game{
 
     @Override
     public void setDifficulty() {
+        super.setHeroHp(10000);
+        super.setMaxHp(10000);
 
         super.setBossHp(400);
         super.setBossSpeedX(10);

@@ -2,6 +2,7 @@ package edu.hitsz.aircraft;
 
 import java.util.List;
 
+import edu.hitsz.GameActivity;
 import edu.hitsz.LaunchActivity;
 import edu.hitsz.application.Main;
 import edu.hitsz.bullet.AbstractBullet;
@@ -30,7 +31,7 @@ public class MissileEnemy extends AbstractAircraft {
     public void forward() {
         super.forward();
         // 判定 y 轴向下飞行出界
-        if (locationY >= LaunchActivity.WINDOW_HEIGHT) {
+        if (locationY >= GameActivity.WINDOW_HEIGHT) {
             vanish();
         }
     }

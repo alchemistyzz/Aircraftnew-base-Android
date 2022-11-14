@@ -18,6 +18,28 @@
 
         <LinearLayout
             android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/GlobalBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@color/xui_btn_blue_normal_color"
+                android:text="全球排行榜" />
+
+            <Button
+                android:id="@+id/UserBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@color/xui_btn_blue_normal_color"
+                android:text="个人排行榜" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="23dp"
             android:orientation="horizontal">
 
